@@ -24,3 +24,22 @@ def homeView(request):
         "addForm": addForm,
     }
     return render(request, "home.html", context)
+
+from django.http import JsonResponse
+
+
+def getMessages(request):
+
+    messages = Message.objects.all()
+
+    messageData = []
+
+    for message in messages:
+        messageData.append({
+            "owner": message.owner.username,
+            "text": message.text
+        })
+    return JsonResponse({
+        'user': request.user.username,
+        'items': messageData
+    })
