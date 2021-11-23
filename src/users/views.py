@@ -1,63 +1,37 @@
-from django.contrib.auth import login
-from django.shortcuts import redirect, render
-from django.urls import reverse
-from django.contrib.auth.forms import UserCreationForm
-
-from .forms import EditProfileForm
-
-from django.contrib import messages
-from django.contrib.auth import update_session_auth_hash
-from django.contrib.auth.forms import PasswordChangeForm
-
-from django.contrib.auth.decorators import login_required
+from rest_framework import permissions, status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_jwt.settings import api_settings
+from django.contrib.auth.models import User
 
 
-def register(request):
-    if request.method == "GET":
-        return render(request, "users/register.html", {"form": UserCreationForm})
+@api_view(['GET'])
+def current_user(request):
+    return Response({'username': request.user.username})
 
-    elif request.method == "POST":
-        form = UserCreationForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            login(request, user)
-            return redirect("/home/")
-        else:
-            event = form.cleaned_data
-            if event.get("password1") != event.get("password2"):
-                errorMsg = "Passwords do not match"
-            else:
-                errorMsg = "Username already exists"
-            context = {
-                "form": UserCreationForm,
-                "error": errorMsg
-            }
-            return render(request, "users/register.html", context)
 
-@login_required
-def changePassword(request):
-    if request.method == 'POST':
-        form = PasswordChangeForm(request.user, request.POST)
-        if form.is_valid():
-            user = form.save()
-            update_session_auth_hash(request, user)  # Important!
-            messages.success(request, 'Your password was successfully updated!')
-            return redirect('/home/')
-        else:
-            messages.error(request, 'Please correct the error below.')
-    else:
-        form = PasswordChangeForm(request.user)
-    return render(request, 'users/change-password.html', {'form': form})
+class Signup(APIView):
 
-@login_required
-def account(request):
+    permission_classes = (permissions.AllowAny,)
 
-    if request.method == "POST":
-        form = EditProfileForm(request.POST, instance=request.user)
-        if form.is_valid():
-            form.save()
-            return redirect("/home")
-    else:
-        form = EditProfileForm(instance = request.user)
-    
-        return render(request, "users/account.html", {"form": form})
+    def post(self, request):
+
+        # CREATING USER
+        if not request.data['username'] or not request.data['password']:
+            return Response({'error': 'Field may not be empty'}, status=status.HTTP_400_BAD_REQUEST)
+        if User.objects.filter(username = request.data['username']).exists():
+            return Response({'Error': "A user with this username already exists"},status=status.HTTP_400_BAD_REQUEST)
+        new_user = User(username = request.data['username'])
+        new_user.set_password(request.data['password'])
+        new_user.save()
+
+        # GETTING TOKEN
+        jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
+        jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
+
+        payload = jwt_payload_handler(new_user)
+        token = jwt_encode_handler(payload)
+        
+        return Response({'token': token, 'username': new_user.username})
+        

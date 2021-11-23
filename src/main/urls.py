@@ -1,15 +1,13 @@
 from django.contrib import admin
-from django.urls import path
-from django.contrib.staticfiles.urls import staticfiles_urlpatterns
-from django.conf.urls import include, url
+from django.urls import path, include
+from rest_framework_jwt.views import obtain_jwt_token
 from chatMessages.views import *
 
 urlpatterns = [
-    path("", homeView),
-    path("home/", homeView),
     path('admin/', admin.site.urls),
-    url(r"^", include("users.urls")),
+    path('token-auth/', obtain_jwt_token),
+    path('users/', include('users.urls')),
+    path('', include('frontend.urls')),
+    path('sendMessage/', SendMessage.as_view()),
     path('getMessages/', getMessages)
 ]
-
-urlpatterns += staticfiles_urlpatterns()

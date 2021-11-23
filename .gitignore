@@ -2,3 +2,4 @@
 src/db.sqlite3
 src/main/settings.py
 *.pyc
+node_modules/
